@@ -1,7 +1,11 @@
 import requests
+import streamlit as st
 
-# OpenWeatherMap API Key
-API_KEY = "843e9c13211ccb7d50123f309ef15457"
+# OpenWeatherMap API Key - Use secrets for deployment
+try:
+    API_KEY = st.secrets["OPENWEATHER_API_KEY"]
+except:
+    API_KEY = "843e9c13211ccb7d50123f309ef15457"  # Fallback for local testing
 
 def fetch_weather_data(city=None, lat=None, lon=None):
     """

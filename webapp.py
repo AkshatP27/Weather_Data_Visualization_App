@@ -1,34 +1,62 @@
 import streamlit as st
-from Data.data_of_weather import fetch_weather_data  # API handled in data_of_weather.py
+from Data.data_of_weather import fetch_weather_data
+
+# Fix matplotlib backend for deployment
+import matplotlib
+matplotlib.use('Agg')  # Must be before importing pyplot
 import matplotlib.pyplot as plt
+
 import pandas as pd
 import geocoder
-from geopy.geocoders import Nominatim  # For reverse geocoding city names
+from geopy.geocoders import Nominatim
 
 # Streamlit Page Configuration
 st.set_page_config(
     page_title="Weather Data Visualization",
     layout="wide",
-    page_icon="Assets/rain.png"
+    page_icon="🌧️"  # Use emoji instead of file path
 )
 
 # Light/Dark Mode Toggle
 if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False  # Default mode: Light
+    st.session_state.dark_mode = False
 
 # Toggle Button
 toggle_label = "🌙 Dark Mode" if not st.session_state.dark_mode else "☀️ Light Mode"
 if st.button(toggle_label):
     st.session_state.dark_mode = not st.session_state.dark_mode
 
-# Apply CSS Based on Mode
-css_file = "dark_mode.css" if st.session_state.dark_mode else "light_mode.css"
-with open(f"Styling_files/{css_file}") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
-# Apply Matplotlib Style Based on Mode
-mpl_style = "dark_background" if st.session_state.dark_mode else "default"
-plt.style.use(mpl_style)
+# Apply CSS Based on Mode - Use inline CSS instead of file loading
+if st.session_state.dark_mode:
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #1E1E1E;
+        color: #FAFAFA;
+    }
+    .stButton > button {
+        background-color: #444;
+        color: white;
+        border: 1px solid #666;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    plt.style.use("dark_background")
+else:
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #FFFFFF;
+        color: #000000;
+    }
+    .stButton > button {
+        background-color: #E0E0E0;
+        color: black;
+        border: 1px solid #CCC;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    plt.style.use("default")
 
 # Title and Input
 st.title("🌤️ Weather Data Visualization")
@@ -37,27 +65,24 @@ st.markdown("Enter the name of city/state/country or allow location access to ge
 # City Name Input
 city_name = st.text_input("Enter city name", "")
 
-# Initialize weather_data
+# Initialize variables
 weather_data = None
+current_location = ""
 
 # Location-Based Input
 st.markdown("OR")
 if st.button("📍 Use My Location"):
     try:
-        g = geocoder.ip('me')  # Get the user's approximate location via IP
+        g = geocoder.ip('me')
         if g.latlng:
             latitude, longitude = g.latlng
-
-            # Reverse Geocoding to Get Location Name
             geolocator = Nominatim(user_agent="geoapiExercises")
             location = geolocator.reverse((latitude, longitude), exactly_one=True)
             current_location = location.address if location else "Unknown Location"
             
-            # Display location details
             st.success(f"Location Detected: {current_location}")
             st.write(f"**Latitude**: {latitude}, **Longitude**: {longitude}")
             
-            # Fetch Weather Data
             weather_data = fetch_weather_data(lat=latitude, lon=longitude)
         else:
             st.error("Unable to detect location. Please enter a city name instead.")
@@ -83,7 +108,8 @@ def generate_forecast_data(weather_data):
 
 if weather_data and "error" not in weather_data:
     # Current Weather Section
-    st.subheader(f"Current Weather in {city_name or current_location}")
+    location_display = city_name or current_location or "Unknown Location"
+    st.subheader(f"Current Weather in {location_display}")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Temperature (°C)", f"{weather_data['main']['temp']}°C")
